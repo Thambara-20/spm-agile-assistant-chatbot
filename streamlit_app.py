@@ -37,7 +37,7 @@ def get_relevant_passage(query):
         results = myindex.query(vector=query_embedding, top_k=1, include_metadata=True)
         if results['matches']:
             metadata = results['matches'][0]['metadata']
-            context = f"Text: {metadata.get('text', 'No text available')}"
+            context = metadata.get('text', 'No text available')
             return context
         return "No relevant results found"
     except Exception as e:
@@ -47,10 +47,10 @@ def get_relevant_passage(query):
 # Function to generate a response from the model based on the query and context
 def generate_answer(query, context):
     try:
-        # Create a concise and focused prompt
-        full_prompt = f"Answer the following query based on the provided context.\n\nQuery: {query}\n\nContext: {context}\n\nAnswer:"
-        
-        # Tokenize and generate response with controlled settings
+        # Simplified and clarified prompt
+        full_prompt = f"Context: {context}\n\nQuestion: {query}\nAnswer:"
+
+        # Tokenize and generate response
         inputs = tokenizer(full_prompt, return_tensors="pt", padding=True)
         outputs = gen_model.generate(
             inputs['input_ids'],
@@ -63,6 +63,10 @@ def generate_answer(query, context):
         )
         response = tokenizer.decode(outputs[0], skip_special_tokens=True)
         
+        # Fallback for repetitive or meaningless responses
+        if response.lower().count("answer") > 5 or len(response) < 10:
+            return "I'm sorry, I couldn't generate a meaningful response. Please try asking in a different way."
+        
         return response
     except Exception as e:
         st.error(f"Error generating response: {e}")
@@ -73,7 +77,7 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 system_message = (
-    "You are a helpful assistant answering queries relevant only to the agile dataset. "
+    "You are a helpful assistant answering queries relevant only to the Agile dataset. "
     "If a query lacks a direct answer, generate a response based on related features. "
     "Answer questions politely. If the user asks about anything outside of the dataset, reply with: "
     "'I can only provide answers related to the dataset, sir.'"
@@ -86,12 +90,15 @@ query = st.text_input("Ask your question:")
 
 if st.button("Get Answer"):
     if query:
-        # Retrieve relevant passage from Pinecone and simplify the context
+        # Retrieve relevant passage from Pinecone
         relevant_text = get_relevant_passage(query)
-        prompt = f"{query}\n\n{relevant_text}"
 
         # Generate and display the final answer
-        answer = generate_answer(query, relevant_text)
+        if relevant_text == "No relevant results found":
+            answer = "I'm sorry, I couldn't find any relevant information in the dataset."
+        else:
+            answer = generate_answer(query, relevant_text)
+        
         st.write("Answer:", answer)
 
         # Store chat history
@@ -103,11 +110,6 @@ if st.button("Get Answer"):
             st.write(system_message)  # Display the system message as context in the history
             for chat in st.session_state.chat_history:
                 st.write(chat)
-
-
-
-
-
 # second one ---------------------------------------------------------------------------------------------------------------------------------------------
 # import os
 # import streamlit as st
