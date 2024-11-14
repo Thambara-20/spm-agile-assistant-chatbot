@@ -46,6 +46,7 @@ def get_relevant_passage(query):
 
 # Function to generate a response from the model based on the query and context
 
+# Function to generate a response from the model based on the query and context
 def generate_answer(system_message, prompt):
     try:
         full_prompt = f"{system_message}\n\nUser: {prompt}\nAssistant:"
@@ -55,7 +56,7 @@ def generate_answer(system_message, prompt):
         outputs = gen_model.generate(
             inputs['input_ids'],
             attention_mask=inputs['attention_mask'],
-            max_length=100,
+            max_new_tokens=50,  # Generate up to 50 new tokens
             do_sample=True,
             temperature=0.7,
             top_p=0.9,
@@ -67,6 +68,7 @@ def generate_answer(system_message, prompt):
     except Exception as e:
         st.error(f"Error generating response: {e}")
         return "Unable to generate a response."
+
 
 # Initialize chat history and system message
 if "chat_history" not in st.session_state:
