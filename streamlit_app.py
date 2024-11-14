@@ -12,7 +12,7 @@ load_dotenv()
 # Configure Pinecone
 api_key = os.getenv("PINECONE_API_KEY")
 pc = Pinecone(api_key=api_key)
-index_name = 'agile-dataset-index'
+index_name = 'scrum-dataset-index'
 myindex = pc.Index(index_name)
 
 # Initialize embedding and generative models
