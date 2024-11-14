@@ -45,10 +45,13 @@ def get_relevant_passage(query):
         return "No relevant results found"
 
 # Function to generate a response from the model based on the query and context
-def generate_answer(prompt):
+def generate_answer(query, context):
     try:
+        # Create a concise and focused prompt
+        full_prompt = f"Answer the following query based on the provided context.\n\nQuery: {query}\n\nContext: {context}\n\nAnswer:"
+        
         # Tokenize and generate response with controlled settings
-        inputs = tokenizer(prompt, return_tensors="pt", padding=True)
+        inputs = tokenizer(full_prompt, return_tensors="pt", padding=True)
         outputs = gen_model.generate(
             inputs['input_ids'],
             attention_mask=inputs['attention_mask'],
@@ -83,12 +86,12 @@ query = st.text_input("Ask your question:")
 
 if st.button("Get Answer"):
     if query:
-        # Retrieve relevant passage from Pinecone and create a prompt
+        # Retrieve relevant passage from Pinecone and simplify the context
         relevant_text = get_relevant_passage(query)
-        prompt = f"User Query: {query}\n\nContext:\n{relevant_text}\n\nAnswer:"
+        prompt = f"{query}\n\n{relevant_text}"
 
         # Generate and display the final answer
-        answer = generate_answer(prompt)
+        answer = generate_answer(query, relevant_text)
         st.write("Answer:", answer)
 
         # Store chat history
