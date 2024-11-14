@@ -27,6 +27,9 @@ gen_model_name = "distilgpt2"
 gen_model = AutoModelForCausalLM.from_pretrained(gen_model_name)
 tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
 
+# Set eos_token as pad_token to avoid padding error
+tokenizer.pad_token = tokenizer.eos_token
+
 # Function to get the relevant passage from Pinecone based on a query
 def get_relevant_passage(query):
     try:
@@ -99,6 +102,7 @@ if st.button("Get Answer"):
         with st.expander("Chat History"):
             for chat in st.session_state.chat_history:
                 st.write(chat)
+
 
 
 
