@@ -11,7 +11,7 @@ load_dotenv()
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 # Initialize Pinecone with your API key and environment
 pc = Pinecone(api_key=PINECONE_API_KEY)
-index_name = 'scrum-dataset-index'
+index_name = 'process-guide-index'
 
 # Connect to the index
 myindex = pc.Index(index_name)
@@ -103,6 +103,7 @@ if st.button("Get Answer"):
             st.write(system_message)  # Display the system message as context in the history
             for chat in st.session_state.chat_history:
                 st.write(chat)
+
 
 
 
