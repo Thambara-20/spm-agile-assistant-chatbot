@@ -87,57 +87,57 @@
 # second one ---------------------------------------------------------------------------------------------------------------------------------------------
 import os
 import streamlit as st
+from pinecone import Pinecone, ServerlessSpec
 from dotenv import load_dotenv
-from langchain.vectorstores import Pinecone
+from langchain.vectorstores import Pinecone as LangchainPinecone
 from langchain.embeddings import SentenceTransformerEmbeddings
-import requests
-import pinecone
+from transformers import pipeline
+from sentence_transformers import SentenceTransformer
 
 # Load environment variables
 load_dotenv()
-hf_api_key = os.getenv("HUGGINGFACE_API_KEY")
-pinecone_api_key = os.getenv("PINECONE_API_KEY")
-pinecone_env = os.getenv("PINECONE_ENVIRONMENT")
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT")
+HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 
 # Initialize Pinecone
-pc = Pinecone(api_key=pinecone_api_key, environment=pinecone_env)
+pc = Pinecone(api_key=PINECONE_API_KEY)
 index_name = 'scrum-dataset-index'
+
+# Check if the index exists; if not, create it
+if index_name not in pc.list_indexes().names():
+    pc.create_index(
+        name=index_name,
+        dimension=768,  # Adjust dimension based on your embedding model
+        metric='cosine',  # Use the desired similarity metric
+        spec=ServerlessSpec(cloud='aws', region=PINECONE_ENVIRONMENT)
+    )
+
+# Connect to the index
 myindex = pc.Index(index_name)
-embed_model = SentenceTransformerEmbeddings(model_name="all-mpnet-base-v2")
-vector_store = Pinecone(index_name=index_name, embedding_function=embed_model)
 
-# Function to get embeddings from Hugging Face API
-def get_embedding(text, api_key):
-    url = "https://api-inference.huggingface.co/models/sentence-transformers/all-mpnet-base-v2"
-    headers = {"Authorization": f"Bearer {api_key}"}
-    response = requests.post(url, headers=headers, json={"inputs": text})
-    return response.json()[0]  # Assuming the embedding is returned as a list
+# Initialize embedding model locally
+embed_model = SentenceTransformer("all-mpnet-base-v2")
 
-# Function to generate a response from Hugging Face API
-def generate_answer(system_message, prompt, api_key):
+# Initialize local text generation model using GPT-2
+generator = pipeline("text-generation", model="gpt2-medium")
+
+# Function to generate embeddings locally
+def get_embedding(text):
+    return embed_model.encode(text).tolist()
+
+# Function to generate an answer using local GPT-2 model
+def generate_answer(system_message, prompt):
     full_prompt = f"{system_message}\n\nUser: {prompt}\nAssistant:"
-    url = "https://api-inference.huggingface.co/models/gpt2-medium"
-    headers = {"Authorization": f"Bearer {api_key}"}
-    response = requests.post(url, headers=headers, json={"inputs": full_prompt, "parameters": {"max_length": 100}})
-    
-    # Ensure the response is in the expected format
-    try:
-        result = response.json()
-        if isinstance(result, list) and len(result) > 0:
-            return result[0]["generated_text"]
-        elif isinstance(result, dict) and "generated_text" in result:
-            return result["generated_text"]
-        else:
-            return "Error: Unexpected response format"
-    except (KeyError, IndexError, TypeError):
-        return "Error generating response"
+    response = generator(full_prompt, max_new_tokens=50, num_return_sequences=1, truncation=True)
+    return response[0]["generated_text"]
 
 # Function to retrieve relevant passage from Pinecone
 def get_relevant_passage(query):
-    query_embedding = get_embedding(query, hf_api_key)
-    results = vector_store.similarity_search(query_embedding, k=1)
-    if results:
-        return results[0].metadata.get("text", "No relevant results found.")
+    query_embedding = get_embedding(query)
+    results = myindex.query(vector=query_embedding, top_k=1, include_metadata=True)
+    if results and results["matches"]:
+        return results["matches"][0]["metadata"].get("text", "No relevant results found.")
     return "No relevant results found."
 
 # Define the system message
@@ -148,30 +148,13 @@ system_message = (
     "'I can only provide answers related to the dataset, sir.'"
 )
 
-# Streamlit UI
+# Streamlit app
 st.title("Agile Assistant Chatbot")
+st.write("Welcome to the Agile Assistant Chatbot. Ask your questions below:")
 
-# Initialize chat history in session state
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-
-# User input
-query = st.text_input("Ask your question:")
-if st.button("Get Answer") and query:
-    # Retrieve relevant passage and create a prompt
+query = st.text_input("Ask your question here:")
+if query:
     relevant_text = get_relevant_passage(query)
     prompt = f"Query: {query}\n\nContext:\n{relevant_text}\n\nAnswer:"
-    
-    # Generate the answer and display
-    answer = generate_answer(system_message, prompt, hf_api_key)
+    answer = generate_answer(system_message, prompt)
     st.write("Answer:", answer)
-
-    # Update chat history
-    st.session_state.chat_history.append(f"User: {query}")
-    st.session_state.chat_history.append(f"Assistant: {answer}")
-
-# Display chat history
-with st.expander("Chat History"):
-    for chat in st.session_state.chat_history:
-        st.write(chat)
-
