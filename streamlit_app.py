@@ -69,7 +69,7 @@ if st.button("Submit") and query:
         st.write("No relevant context was found. Please ask another question.")
     else:
         answer = asyncio.run(generate_answer(query, relevant_text, st.session_state.history))
-        st.write(f"Bot: {answer}")
+        st.write(f"{answer}")
 
         # Append to history for ongoing context
         st.session_state.history.append((query, answer))
