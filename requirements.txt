@@ -7,3 +7,4 @@ python-dotenv
 langchain
 requests
 langchain-community
+google-generative-ai
