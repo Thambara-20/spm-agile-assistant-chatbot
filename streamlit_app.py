@@ -56,25 +56,32 @@ async def generate_answer(query, context, history):
 # Streamlit UI
 st.title("Agile Assistant Chatbot")
 
-# Initialize session state for history
+# Initialize session state for history if not already initialized
 if "history" not in st.session_state:
     st.session_state.history = []
+
+# Display the chat history to the user
+for q, a in st.session_state.history:
+    st.write(f"**User:** {q}")
+    st.write(f"**Bot:** {a}")
 
 # Input from user
 query = st.text_input("Ask your question:")
 
 if st.button("Submit") and query:
+    # Get relevant context from Pinecone
     relevant_text = asyncio.run(get_relevant_passage(query))
+    
     if relevant_text == "No relevant results found":
         st.write("No relevant context was found. Please ask another question.")
     else:
+        # Generate the bot's response using the history and context
         answer = asyncio.run(generate_answer(query, relevant_text, st.session_state.history))
-        st.write(f"{answer}")
+        st.write(f"**Bot:** {answer}")
 
-        # Append to history for ongoing context
+        # Append the current question and answer to the history
         st.session_state.history.append((query, answer))
-
-
+        
 # second one ---------------------------------------------------------------------------------------------------------------------------------------------
 # import os
 # import streamlit as st
