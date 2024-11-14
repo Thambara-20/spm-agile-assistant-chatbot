@@ -100,7 +100,7 @@ pinecone_api_key = os.getenv("PINECONE_API_KEY")
 pinecone_env = os.getenv("PINECONE_ENVIRONMENT")
 
 # Initialize Pinecone
-pc = Pinecone(api_key=pinecone_api_key)
+pc = Pinecone(api_key=pinecone_api_key, environment=pinecone_env)
 index_name = 'scrum-dataset-index'
 myindex = pc.Index(index_name)
 embed_model = SentenceTransformerEmbeddings(model_name="all-mpnet-base-v2")
