@@ -23,7 +23,7 @@ try:
 except Exception as e:
     st.error(f"Error loading SentenceTransformer model: {e}")
 
-gen_model_name = "distilgpt2"
+gen_model_name = "EleutherAI/gpt-neo-1.3B"
 gen_model = AutoModelForCausalLM.from_pretrained(gen_model_name)
 tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
 
