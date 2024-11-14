@@ -1,115 +1,80 @@
 import os
+import asyncio
 import streamlit as st
 from dotenv import load_dotenv
-from pinecone import Pinecone
+from langchain.vectorstores import Pinecone as LangchainPinecone
+from langchain.embeddings import SentenceTransformerEmbeddings
 from sentence_transformers import SentenceTransformer
-from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch
+import google.generativeai as genai
+from pinecone import Pinecone
 
 # Load environment variables
 load_dotenv()
-PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-# Initialize Pinecone with your API key and environment
-pc = Pinecone(api_key=PINECONE_API_KEY)
-index_name = 'process-guide-index'
 
-# Connect to the index
+# Pinecone and Gemini API configuration
+pinecone_api_key = os.getenv("PINECONE_API_KEY")
+pinecone_env = "us-east-1"  # replace with your environment if needed
+gemini_api_key = os.getenv("GEMINI_API_KEY")
+
+# Configure Gemini API key
+genai.configure(api_key=gemini_api_key)
+
+# Initialize Pinecone
+pc = Pinecone(api_key=pinecone_api_key)
+index_name = 'process-guide-index'
 myindex = pc.Index(index_name)
 
-# Initialize models with try-except blocks to isolate errors
-try:
-    # Embedding model initialization
-    embed_model = SentenceTransformer('all-mpnet-base-v2')
-except Exception as e:
-    st.error(f"Error loading SentenceTransformer model: {e}")
+# Initialize embedding model locally
+embed_model = SentenceTransformer("all-mpnet-base-v2")
 
-gen_model_name = "EleutherAI/gpt-neo-1.3B"
-gen_model = AutoModelForCausalLM.from_pretrained(gen_model_name)
-tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
+# Function to generate response using Gemini
+def generate_response_with_gemini(prompt):
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    response = model.generate_content(prompt)
+    return response.text
 
-# Set eos_token as pad_token to avoid padding error
-tokenizer.pad_token = tokenizer.eos_token
+# Retrieve relevant passage from Pinecone
+async def get_relevant_passage(query):
+    query_embedding = embed_model.encode(query).tolist()
+    search_results = myindex.query(vector=query_embedding, top_k=3, include_metadata=True)
 
-# Function to get the relevant passage from Pinecone based on a query
-def get_relevant_passage(query):
-    try:
-        query_embedding = embed_model.encode(query).tolist()  # Convert ndarray to list for compatibility
-        results = myindex.query(vector=query_embedding, top_k=1, include_metadata=True)
-        if results['matches']:
-            metadata = results['matches'][0]['metadata']
-            context = metadata.get('text', 'No text available')
-            return context
-        return "No relevant results found"
-    except Exception as e:
-        st.error(f"Error retrieving passage from Pinecone: {e}")
-        return "No relevant results found"
-
-# Function to generate a response from the model based on the query and context
-def generate_answer(query, context):
-    try:
-        # Simplified and clarified prompt
-        full_prompt = f"Context: {context}\n\nQuestion: {query}\nAnswer:"
-
-        # Tokenize and generate response
-        inputs = tokenizer(full_prompt, return_tensors="pt", padding=True)
-        outputs = gen_model.generate(
-            inputs['input_ids'],
-            attention_mask=inputs['attention_mask'],
-            max_new_tokens=50,  # Generate up to 50 new tokens
-            do_sample=True,
-            temperature=0.7,
-            top_p=0.9,
-            pad_token_id=tokenizer.eos_token_id
+    if search_results.matches:
+        relevant_entries = " ".join(
+            f"{match.metadata.get('input', '')} {match.metadata.get('output', '')} {match.metadata.get('text', '')}"
+            for match in search_results.matches
         )
-        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
-        # Fallback for repetitive or meaningless responses
-        if response.lower().count("answer") > 5 or len(response) < 10:
-            return "I'm sorry, I couldn't generate a meaningful response. Please try asking in a different way."
-        
-        return response
-    except Exception as e:
-        st.error(f"Error generating response: {e}")
-        return "Unable to generate a response."
+        return relevant_entries
+    return "No relevant results found."
 
-# Initialize chat history and system message
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-
-system_message = (
-    "You are a helpful assistant answering queries relevant only to the Agile dataset. "
-    "If a query lacks a direct answer, generate a response based on related features. "
-    "Answer questions politely. If the user asks about anything outside of the dataset, reply with: "
-    "'I can only provide answers related to the dataset, sir.'"
-)
+# Generate answer based on context and history using Gemini
+async def generate_answer(query, context, history):
+    history_text = "\n".join([f"User: {q}\nBot: {a}" for q, a in history])
+    input_text = f"You are an Agile Assistant. Here’s the conversation so far and additional context to help answer the user's question.\n\nHistory:\n{history_text}\n\nContext:\n{context}\n\nQuestion:\n{query}\n\nAnswer as clearly and concisely as possible."
+    response = generate_response_with_gemini(input_text)
+    return response.strip()
 
 # Streamlit UI
 st.title("Agile Assistant Chatbot")
 
+# Initialize session state for history
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+# Input from user
 query = st.text_input("Ask your question:")
 
-if st.button("Get Answer"):
-    if query:
-        # Retrieve relevant passage from Pinecone
-        relevant_text = get_relevant_passage(query)
+if st.button("Submit") and query:
+    relevant_text = asyncio.run(get_relevant_passage(query))
+    if relevant_text == "No relevant results found":
+        st.write("No relevant context was found. Please ask another question.")
+    else:
+        answer = asyncio.run(generate_answer(query, relevant_text, st.session_state.history))
+        st.write(f"Bot: {answer}")
 
-        # Generate and display the final answer
-        if relevant_text == "No relevant results found":
-            answer = "I'm sorry, I couldn't find any relevant information in the dataset."
-        else:
-            answer = generate_answer(query, relevant_text)
-        
-        st.write("Answer:", answer)
+        # Append to history for ongoing context
+        st.session_state.history.append((query, answer))
 
-        # Store chat history
-        st.session_state.chat_history.append(f"User: {query}")
-        st.session_state.chat_history.append(f"Assistant: {answer}")
 
-        # Display chat history
-        with st.expander("Chat History"):
-            st.write(system_message)  # Display the system message as context in the history
-            for chat in st.session_state.chat_history:
-                st.write(chat)
 # second one ---------------------------------------------------------------------------------------------------------------------------------------------
 # import os
 # import streamlit as st
