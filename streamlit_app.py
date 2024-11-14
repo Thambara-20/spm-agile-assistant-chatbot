@@ -62,8 +62,8 @@ if "history" not in st.session_state:
 
 # Display the chat history to the user
 for q, a in st.session_state.history:
-    st.write(f"**User:** {q}")
-    st.write(f"**Bot:** {a}")
+    st.write(f"**You** {q}")
+    st.write(f"{a}")
 
 # Input from user
 query = st.text_input("Ask your question:")
@@ -77,7 +77,7 @@ if st.button("Submit") and query:
     else:
         # Generate the bot's response using the history and context
         answer = asyncio.run(generate_answer(query, relevant_text, st.session_state.history))
-        st.write(f"**Bot:** {answer}")
+        st.write(f"{answer}")
 
         # Append the current question and answer to the history
         st.session_state.history.append((query, answer))
