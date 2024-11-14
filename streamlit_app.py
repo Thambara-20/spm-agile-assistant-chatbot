@@ -47,11 +47,13 @@ def generate_answer(system_message, prompt):
     try:
         full_prompt = f"{system_message}\n\nUser: {prompt}\nAssistant:"
         
-        # Generate response with controlled settings
-        inputs = tokenizer(full_prompt, return_tensors="pt")
+        # Tokenize and generate response with controlled settings
+        inputs = tokenizer(full_prompt, return_tensors="pt", padding=True)
         outputs = gen_model.generate(
             inputs['input_ids'],
+            attention_mask=inputs['attention_mask'],
             max_length=100,
+            do_sample=True,
             temperature=0.7,
             top_p=0.9,
             pad_token_id=tokenizer.eos_token_id
