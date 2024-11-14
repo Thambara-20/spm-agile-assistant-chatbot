@@ -45,14 +45,10 @@ def get_relevant_passage(query):
         return "No relevant results found"
 
 # Function to generate a response from the model based on the query and context
-
-# Function to generate a response from the model based on the query and context
-def generate_answer(system_message, prompt):
+def generate_answer(prompt):
     try:
-        full_prompt = f"{system_message}\n\nUser: {prompt}\nAssistant:"
-        
         # Tokenize and generate response with controlled settings
-        inputs = tokenizer(full_prompt, return_tensors="pt", padding=True)
+        inputs = tokenizer(prompt, return_tensors="pt", padding=True)
         outputs = gen_model.generate(
             inputs['input_ids'],
             attention_mask=inputs['attention_mask'],
@@ -69,14 +65,13 @@ def generate_answer(system_message, prompt):
         st.error(f"Error generating response: {e}")
         return "Unable to generate a response."
 
-
 # Initialize chat history and system message
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 system_message = (
-    "If a query lacks a direct answer, generate a response based on related features. "
     "You are a helpful assistant answering queries relevant only to the agile dataset. "
+    "If a query lacks a direct answer, generate a response based on related features. "
     "Answer questions politely. If the user asks about anything outside of the dataset, reply with: "
     "'I can only provide answers related to the dataset, sir.'"
 )
@@ -90,10 +85,10 @@ if st.button("Get Answer"):
     if query:
         # Retrieve relevant passage from Pinecone and create a prompt
         relevant_text = get_relevant_passage(query)
-        prompt = f"Query: {query}\n\nContext:\n{relevant_text}\n\nAnswer:"
-        
+        prompt = f"User Query: {query}\n\nContext:\n{relevant_text}\n\nAnswer:"
+
         # Generate and display the final answer
-        answer = generate_answer(system_message, prompt)
+        answer = generate_answer(prompt)
         st.write("Answer:", answer)
 
         # Store chat history
@@ -102,6 +97,7 @@ if st.button("Get Answer"):
 
         # Display chat history
         with st.expander("Chat History"):
+            st.write(system_message)  # Display the system message as context in the history
             for chat in st.session_state.chat_history:
                 st.write(chat)
 
