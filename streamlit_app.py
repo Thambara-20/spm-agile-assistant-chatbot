@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 from dotenv import load_dotenv
-import pinecone  # Import Pinecone correctly
+from pinecone import Pinecone, ServerlessSpec
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
@@ -9,10 +9,11 @@ import torch
 # Load environment variables
 load_dotenv()
 
-# Initialize Pinecone with your API key and environment
-pinecone.init(api_key=os.getenv("PINECONE_API_KEY"), environment="us-east-1")  # Ensure environment matches your Pinecone setup
+# Configure Pinecone
+api_key = os.getenv("PINECONE_API_KEY")
+pc = Pinecone(api_key=api_key)
 index_name = 'agile-dataset-index'
-myindex = pinecone.Index(index_name)  # Initialize Pinecone index
+myindex = pc.Index(index_name)
 
 # Initialize embedding and generative models
 embed_model = SentenceTransformer('all-mpnet-base-v2')
