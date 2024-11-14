@@ -1,19 +1,20 @@
-# 🎈 Blank app template
+# Agile Assistant Chatbot
 
-A simple Streamlit app template for you to modify!
+## Overview
+The **Agile Assistant Chatbot** is a conversational AI built to assist users with Agile-related queries. It uses advanced technologies such as **Pinecone**, **Sentence Transformers**, and **Google Gemini** (Generative AI) to provide relevant answers based on a pre-defined Agile dataset. The chatbot interacts through a user-friendly **Streamlit** interface, making it easy to ask questions and receive responses in real-time.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
+### Features
+- **Contextual Responses**: Maintains a conversation history to ensure responses are context-aware.
+- **Vector Search**: Uses **Pinecone** to retrieve relevant documents based on the user's query.
+- **Generative AI**: Powered by **Google Gemini**, the chatbot generates answers with natural language understanding.
+- **Interactive UI**: Built with **Streamlit**, providing an easy-to-use interface for users to ask questions and receive answers.
 
-### How to run it on your own machine
+---
 
-1. Install the requirements
+## Requirements
 
-   ```
-   $ pip install -r requirements.txt
-   ```
+### Python Libraries
+To run this application, install the necessary libraries:
 
-2. Run the app
-
-   ```
-   $ streamlit run streamlit_app.py
-   ```
+```bash
+pip install streamlit python-dotenv langchain sentence-transformers google-generativeai pinecone-client
