@@ -23,13 +23,9 @@ try:
 except Exception as e:
     st.error(f"Error loading SentenceTransformer model: {e}")
 
-try:
-    # Generative model initialization
-    gen_model_name = "gpt2-medium"
-    gen_model = AutoModelForCausalLM.from_pretrained(gen_model_name)
-    tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
-except Exception as e:
-    st.error(f"Error loading GPT-2 model: {e}")
+gen_model_name = "distilgpt2"
+gen_model = AutoModelForCausalLM.from_pretrained(gen_model_name)
+tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
 
 # Function to get the relevant passage from Pinecone based on a query
 def get_relevant_passage(query):
@@ -46,6 +42,7 @@ def get_relevant_passage(query):
         return "No relevant results found"
 
 # Function to generate a response from the model based on the query and context
+
 def generate_answer(system_message, prompt):
     try:
         full_prompt = f"{system_message}\n\nUser: {prompt}\nAssistant:"
