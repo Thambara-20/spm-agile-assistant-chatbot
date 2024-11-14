@@ -17,7 +17,7 @@ myindex = pc.Index(index_name)
 
 # Initialize embedding and generative models
 embed_model = SentenceTransformer('all-mpnet-base-v2')
-gen_model_name = "distilgpt2"
+gen_model_name = "gpt2-medium"  # Using a larger model for better response quality
 gen_model = AutoModelForCausalLM.from_pretrained(gen_model_name)
 tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
 
@@ -32,12 +32,21 @@ def get_relevant_passage(query):
     return "No relevant results found"
 
 # Function to generate a response from the model based on the query and context
-def generate_answer(system_message, chat_history, prompt):
-    full_prompt = f"{system_message}\n\n" + "\n".join(chat_history) + f"\nUser: {prompt}\nAssistant:"
+def generate_answer(system_message, prompt):
+    # Simplify the prompt to focus on the latest query and context
+    full_prompt = f"{system_message}\n\nUser: {prompt}\nAssistant:"
+    
+    # Generate response with controlled settings
     inputs = tokenizer(full_prompt, return_tensors="pt")
-    outputs = gen_model.generate(inputs['input_ids'], max_length=150, pad_token_id=tokenizer.eos_token_id)
+    outputs = gen_model.generate(
+        inputs['input_ids'],
+        max_length=100,
+        temperature=0.7,
+        top_p=0.9,
+        pad_token_id=tokenizer.eos_token_id
+    )
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    chat_history.append(f"Assistant: {response}")
+    
     return response
 
 # Initialize chat history and system message
@@ -58,10 +67,17 @@ query = st.text_input("Ask your question:")
 
 if st.button("Get Answer"):
     if query:
+        # Retrieve relevant passage from Pinecone and create a prompt
         relevant_text = get_relevant_passage(query)
         prompt = f"Query: {query}\n\nContext:\n{relevant_text}\n\nAnswer:"
-        answer = generate_answer(system_message, st.session_state.chat_history, prompt)
+        
+        # Generate and display the final answer
+        answer = generate_answer(system_message, prompt)
         st.write("Answer:", answer)
+
+        # Store chat history
+        st.session_state.chat_history.append(f"User: {query}")
+        st.session_state.chat_history.append(f"Assistant: {answer}")
 
         # Display chat history
         with st.expander("Chat History"):
