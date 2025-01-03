@@ -1,5 +1,5 @@
 # Agile Assistant Chatbot
-
+URL: [https://agile-ai.streamlit.app/](https://agile-ai.streamlit.app/)
 ## Overview
 Theis is an AI assistant built using **Retrieval-Augmented Generation (RAG)** to provide intelligent and context-aware answers to Agile-related queries. The bot combines **Pinecone** for efficient vector-based search, **Sentence Transformers** for generating text embeddings, and **Google Gemini** for generating human-like answers. It is designed to help users with Agile practices, Scrum methodologies, and other related topics by leveraging a custom Agile dataset.
 
