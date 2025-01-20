@@ -23,3 +23,6 @@ You will need to install the following Python libraries to run the application:
 
 ```bash
 pip install streamlit python-dotenv langchain sentence-transformers google-generativeai pinecone-client datasets
+
+```
+You want to create a .env file and set ```GEMINI_API_KEY``` and ```PINECONE_API_KEY``` accordingly.
